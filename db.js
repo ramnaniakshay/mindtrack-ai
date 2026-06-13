@@ -1,5 +1,6 @@
 import pg from 'pg';
 import { execSync } from 'child_process';
+import fs from 'fs';
 
 const { Pool } = pg;
 let pool = null;
@@ -25,20 +26,33 @@ export function getPool() {
   if (pool) return pool;
 
   const password = getDbPassword();
-  pool = new Pool({
-    host: '34.93.26.233',
+  const socketPath = '/cloudsql/ai-deployment-project-492711:asia-south1:my-pg-db';
+  const useSocket = fs.existsSync(socketPath);
+
+  const config = {
     port: 5432,
     user: 'postgres',
     password: password,
     database: 'postgres',
     max: 10,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,
-    ssl: {
-      rejectUnauthorized: false
-    }
-  });
+    connectionTimeoutMillis: 10000
+  };
 
+  if (useSocket) {
+    console.log("Production connection: using Cloud SQL Unix socket path:", socketPath);
+    config.host = socketPath;
+    // Unix socket connections are secure locally by default and do not require SSL wrapping
+    config.ssl = false;
+  } else {
+    console.log("Local connection: using Public IP: 34.93.26.233");
+    config.host = '34.93.26.233';
+    config.ssl = {
+      rejectUnauthorized: false
+    };
+  }
+
+  pool = new Pool(config);
   return pool;
 }
 
