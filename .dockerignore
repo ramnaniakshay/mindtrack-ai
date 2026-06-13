@@ -4,3 +4,7 @@ dist/
 .gitignore
 .dockerignore
 *.log
+.env*
+*.key
+Dockerfile
+build.sh
