@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aura - Student Mental Wellness & Exam Stress Tracker</title>
+  <meta name="description" content="An empathetic digital companion and wellness tracker for competitive exam students. Track mood, analyze daily journals, practice breathing, and chat with Aura.">
+  
+  <!-- Premium Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Confetti CDN for Grounding reward -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" role="navigation" aria-label="Main Navigation">
+      <div class="brand">
+        <div class="brand-logo" aria-hidden="true">
+          <i data-lucide="sparkles"></i>
+        </div>
+        <div class="brand-info">
+          <h1>Aura</h1>
+          <span class="sub-brand">Student Wellness</span>
+        </div>
+        <button id="btn-theme-toggle" class="btn-theme-toggle" aria-label="Toggle theme mode" title="Toggle Light/Dark Mode">
+          <i data-lucide="sun" id="theme-toggle-icon"></i>
+        </button>
+      </div>
+      
+      <nav class="nav-menu">
+        <button id="nav-dashboard" class="nav-item active" aria-controls="panel-dashboard" aria-selected="true" role="tab">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Dashboard</span>
+        </button>
+        <button id="nav-journal" class="nav-item" aria-controls="panel-journal" aria-selected="false" role="tab">
+          <i data-lucide="book-open"></i>
+          <span>Mood & Journal</span>
+        </button>
+        <button id="nav-chat" class="nav-item" aria-controls="panel-chat" aria-selected="false" role="tab">
+          <i data-lucide="message-circle-heart"></i>
+          <span>Aura Companion</span>
+        </button>
+        <button id="nav-mindfulness" class="nav-item" aria-controls="panel-mindfulness" aria-selected="false" role="tab">
+          <i data-lucide="wind"></i>
+          <span>Stress Busters</span>
+        </button>
+        <button id="nav-pomodoro" class="nav-item" aria-controls="panel-pomodoro" aria-selected="false" role="tab">
+          <i data-lucide="timer"></i>
+          <span>Focus Space</span>
+        </button>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <button id="btn-settings" class="btn-icon" aria-label="Open Settings" title="Settings">
+          <i data-lucide="settings"></i>
+          <span>Settings</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content" role="main" aria-label="Dashboard Panels">
+      
+      <!-- Panel: Dashboard -->
+      <section id="panel-dashboard" class="tab-panel active" role="tabpanel" aria-labelledby="nav-dashboard">
+        <header class="panel-header">
+          <div>
+            <span class="header-pre">Welcome back</span>
+            <h2 class="header-title">Your Wellness Center</h2>
+          </div>
+          <div class="exam-countdown-widget" id="countdown-widget" aria-live="polite">
+            <span class="countdown-label">Target Exam Goal</span>
+            <span class="countdown-timer" id="days-remaining">Loading...</span>
+          </div>
+        </header>
+        
+        <!-- Dashboard Grid -->
+        <div class="dashboard-grid">
+          
+          <!-- Card: Affirmation -->
+          <div class="card card-hero glassmorphic">
+            <div class="card-hero-content">
+              <i data-lucide="quote" class="quote-icon" aria-hidden="true"></i>
+              <p class="affirmation-text" id="daily-affirmation">"Your capacity to learn and adapt is infinitely greater than any single exam mock score."</p>
+              <span class="affirmation-author">Aura Wellness Companion</span>
+            </div>
+          </div>
+          
+          <!-- Card: Mood Check-in Quick Launcher -->
+          <div class="card glassmorphic checkin-card">
+            <h3>Quick Mood Log</h3>
+            <p class="card-desc">How are you feeling right now?</p>
+            <div class="mood-selector-row">
+              <button class="mood-btn" data-mood="Calm" title="Calm" aria-label="Log Calm">😌 <span>Calm</span></button>
+              <button class="mood-btn" data-mood="Stressed" title="Stressed" aria-label="Log Stressed">😰 <span>Stressed</span></button>
+              <button class="mood-btn" data-mood="Anxious" title="Anxious" aria-label="Log Anxious">😟 <span>Anxious</span></button>
+              <button class="mood-btn" data-mood="Energized" title="Energized" aria-label="Log Energized">⚡ <span>Active</span></button>
+              <button class="mood-btn" data-mood="Exhausted" title="Exhausted" aria-label="Log Exhausted">🔋 <span>Tired</span></button>
+            </div>
+            <div id="quick-log-confirm" class="confirm-message" aria-live="polite"></div>
+          </div>
+          
+          <!-- Card: Analytics Trend -->
+          <div class="card glassmorphic chart-card">
+            <h3>Emotional Weather Trend</h3>
+            <p class="card-desc">Your stress and energy variations over time</p>
+            <div class="chart-container" id="mood-chart-container">
+              <!-- Inline SVG Chart will be injected here -->
+              <svg id="mood-chart" class="svg-chart" viewBox="0 0 500 200" aria-label="Line chart showing stress and energy levels"></svg>
+            </div>
+          </div>
+
+          <!-- Card: Exam Stress Heuristics Radar -->
+          <div class="card glassmorphic stress-insight-card">
+            <h3>Stress Insights</h3>
+            <p class="card-desc">Cognitive distortion analysis from journals</p>
+            <div class="stress-indicators-list" id="stress-indicators-body">
+              <p class="empty-state">No journal entries logged yet. Write in your journal to discover patterns.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel: Mood & Journal -->
+      <section id="panel-journal" class="tab-panel" role="tabpanel" aria-labelledby="nav-journal">
+        <header class="panel-header">
+          <div>
+            <span class="header-pre">Expressive Writing</span>
+            <h2 class="header-title">Journal & Mood Log</h2>
+          </div>
+        </header>
+        
+        <div class="journal-layout">
+          <!-- Journal Composer -->
+          <div class="card glassmorphic journal-composer">
+            <h3>Write Your Thoughts</h3>
+            <p class="card-desc">Letting go of exam stress starts by putting it on paper.</p>
+            
+            <form id="form-journal">
+              <div class="form-group">
+                <label for="journal-title">Title</label>
+                <input type="text" id="journal-title" placeholder="E.g., Feeling mock test jitters..." required>
+              </div>
+              
+              <div class="form-group">
+                <label for="journal-content">Journal Entry</label>
+                <div class="textarea-container">
+                  <textarea id="journal-content" rows="8" placeholder="Start typing... Feel free to vent about syllabus backlogs, score expectations, physics formulas, or mock test results." required></textarea>
+                </div>
+              </div>
+              
+              <button type="submit" class="btn btn-primary" id="btn-save-journal">
+                <i data-lucide="check"></i> Save & Analyze Entry
+              </button>
+            </form>
+          </div>
+          
+          <!-- Journal History List -->
+          <div class="journal-history-list">
+            <h3>Previous Entries</h3>
+            <div id="journals-container">
+              <!-- Journal Cards -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel: Aura Chat -->
+      <section id="panel-chat" class="tab-panel" role="tabpanel" aria-labelledby="nav-chat">
+        <header class="panel-header">
+          <div>
+            <span class="header-pre">Safe Space</span>
+            <h2 class="header-title">Chat with Aura</h2>
+          </div>
+        </header>
+        
+        <div class="chat-container glassmorphic">
+          <!-- Safety banner if triggered -->
+          <div id="chat-safety-banner" class="safety-banner" style="display:none;" aria-live="assertive"></div>
+          
+          <div class="chat-messages" id="chat-messages-box" role="log" aria-label="Conversation History">
+            <!-- Messages -->
+            <div class="message system">
+              <div class="message-content">
+                <p>Hello! I'm Aura, your empathetic wellness companion. How is your preparation going? Feel free to vent about mock tests, anxiety, sleep issues, or syllabus pressures. I'm here to support you.</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="chat-input-area">
+            <form id="form-chat" class="chat-form">
+              <input type="text" id="chat-input-field" placeholder="Type a message to Aura..." required aria-label="Chat Message Input">
+              <button type="submit" class="btn-send" id="btn-chat-send" aria-label="Send Message">
+                <i data-lucide="send"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel: Stress Busters -->
+      <section id="panel-mindfulness" class="tab-panel" role="tabpanel" aria-labelledby="nav-mindfulness">
+        <header class="panel-header">
+          <div>
+            <span class="header-pre">Reset Your Mind</span>
+            <h2 class="header-title">Stress Buster Tools</h2>
+          </div>
+        </header>
+        
+        <div class="mindfulness-layout">
+          <!-- 4-7-8 Breathing Guide -->
+          <div class="card glassmorphic breathing-card">
+            <h3>4-7-8 Breathing Pacer</h3>
+            <p class="card-desc">Calms the nervous system instantly. Inhale 4s, Hold 7s, Exhale 8s.</p>
+            <div class="breath-visualizer-container">
+              <div id="breathing-circle" class="breath-circle" aria-live="polite">
+                <span id="breathing-timer">0s</span>
+              </div>
+            </div>
+            <div class="breath-prompt-container">
+              <p id="breathing-instruction">Tap Start to Begin</p>
+            </div>
+            <div class="breath-actions">
+              <button id="btn-breath-start" class="btn btn-primary">Start</button>
+              <button id="btn-breath-stop" class="btn btn-secondary">Stop</button>
+            </div>
+          </div>
+          
+          <!-- 5-4-3-2-1 Grounding Game -->
+          <div class="card glassmorphic grounding-card-panel">
+            <h3>5-4-3-2-1 Sensory Grounding</h3>
+            <p class="card-desc">Break the spiral of sudden anxiety by tuning into your physical senses.</p>
+            <div id="grounding-wizard-container">
+              <p id="grounding-step-text" class="grounding-prompt">Tap Start to Begin the exercise.</p>
+              <div id="grounding-inputs-box" class="grounding-inputs-grid"></div>
+              <div class="grounding-actions">
+                <button id="btn-grounding-start" class="btn btn-primary">Start Exercise</button>
+                <button id="btn-grounding-next" class="btn btn-primary" style="display:none;">Next Step</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel: Focus Space / Pomodoro -->
+      <section id="panel-pomodoro" class="tab-panel" role="tabpanel" aria-labelledby="nav-pomodoro">
+        <header class="panel-header">
+          <div>
+            <span class="header-pre">Burnout Prevention</span>
+            <h2 class="header-title">Focus & Soundscape Space</h2>
+          </div>
+        </header>
+        
+        <div class="pomodoro-layout">
+          <!-- Pomodoro Timer -->
+          <div class="card glassmorphic pomodoro-card">
+            <h3>Pomodoro Focus Tracker</h3>
+            <p class="card-desc">Study effectively for 25 minutes, then take a mandatory 5-minute wellness break.</p>
+            
+            <div class="timer-display-container">
+              <!-- SVG circular progress -->
+              <svg class="progress-ring" width="200" height="200">
+                <circle class="progress-ring__circle-bg" stroke="rgba(255,255,255,0.05)" stroke-width="8" fill="transparent" r="80" cx="100" cy="100"/>
+                <circle id="pomodoro-progress-circle" class="progress-ring__circle" stroke="var(--accent-teal)" stroke-width="8" fill="transparent" r="80" cx="100" cy="100"/>
+              </svg>
+              <div class="timer-text" id="pomodoro-time-display">25:00</div>
+            </div>
+            
+            <div class="pomodoro-controls">
+              <button id="btn-pomodoro-start" class="btn btn-primary">Start Session</button>
+              <button id="btn-pomodoro-pause" class="btn btn-secondary">Pause</button>
+              <button id="btn-pomodoro-reset" class="btn btn-secondary">Reset</button>
+            </div>
+            <div class="pomodoro-status" id="pomodoro-status-text">Study Mode Active</div>
+          </div>
+          
+          <!-- Zen Soundscapes -->
+          <div class="card glassmorphic soundscape-card">
+            <h3>Zen Soundscapes</h3>
+            <p class="card-desc">Enable offline-synthesized ambient sounds to help you concentrate.</p>
+            
+            <div class="sound-mixers-list">
+              <div class="sound-item">
+                <div class="sound-info">
+                  <i data-lucide="waves"></i>
+                  <span>Ocean Wave Swells</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="chk-sound-ocean">
+                  <span class="slider rounded"></span>
+                </label>
+              </div>
+              
+              <div class="sound-item">
+                <div class="sound-info">
+                  <i data-lucide="activity"></i>
+                  <span>Binaural Beats (8Hz Alpha)</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="chk-sound-binaural">
+                  <span class="slider rounded"></span>
+                </label>
+              </div>
+              
+              <div class="sound-item">
+                <div class="sound-info">
+                  <i data-lucide="coffee"></i>
+                  <span>Deep Focus Brown Noise</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="chk-sound-noise">
+                  <span class="slider rounded"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+    </main>
+  </div>
+
+  <!-- Settings Dialog Drawer Modal -->
+  <dialog id="settings-dialog" class="settings-modal glassmorphic">
+    <div class="dialog-header">
+      <h2>Wellness Settings</h2>
+      <button id="btn-close-settings" class="btn-icon" aria-label="Close Settings dialog">&times;</button>
+    </div>
+    
+    <form id="form-settings">
+      <div class="form-group">
+        <label for="settings-exam">Target Board / Competitive Exam</label>
+        <select id="settings-exam">
+          <option value="JEE">JEE (IIT Entrance)</option>
+          <option value="NEET">NEET (Medical Entrance)</option>
+          <option value="UPSC">UPSC Civil Services</option>
+          <option value="CAT">CAT (MBA Entrance)</option>
+          <option value="GATE">GATE (Engineering PG)</option>
+          <option value="Board Exams">10th / 12th Board Exams</option>
+          <option value="Other">Other Academic Finals</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label for="settings-date">Target Exam Date</label>
+        <input type="date" id="settings-date">
+      </div>
+      
+      <button type="submit" class="btn btn-primary" id="btn-save-settings">Save Settings</button>
+    </form>
+  </dialog>
+
+  <!-- Main Front-end Script -->
+  <script type="module" src="/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+{
+  "name": "mental-wellness-tracker",
+  "version": "1.0.0",
+  "description": "Generative AI-powered Mental Wellness Tracker for Students",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "dev:frontend": "vite",
+    "dev:backend": "nodemon server.js",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "build": "vite build",
+    "start": "node server.js",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --forceExit --passWithNoTests"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "pg": "^8.11.5"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.0",
+    "supertest": "^6.3.4",
+    "vite": "^5.2.8"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "transform": {}
+  }
+}
