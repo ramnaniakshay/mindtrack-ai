@@ -827,11 +827,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initial Boot Sequence
   async function boot() {
-    await loadSettings();
+    try {
+      await Promise.all([
+        loadSettings(),
+        refreshMoodsData(),
+        refreshJournals(),
+        loadChatHistory()
+      ]);
+    } catch (err) {
+      console.warn("Error loading data during application boot:", err);
+    }
     updateCountdown();
-    await refreshMoodsData();
-    await refreshJournals();
-    await loadChatHistory();
     updatePomodoroTimer();
   }
 

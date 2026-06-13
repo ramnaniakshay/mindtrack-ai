@@ -4,13 +4,11 @@ let geminiApiKey = null;
 let checkedKey = false;
 
 function getApiKey() {
+  if (process.env.GEMINI_API_KEY) {
+    return process.env.GEMINI_API_KEY;
+  }
   if (checkedKey) return geminiApiKey;
   checkedKey = true;
-
-  if (process.env.GEMINI_API_KEY) {
-    geminiApiKey = process.env.GEMINI_API_KEY;
-    return geminiApiKey;
-  }
 
   try {
     console.log("Checking for GEMINI_API_KEY in Secret Manager via gcloud...");

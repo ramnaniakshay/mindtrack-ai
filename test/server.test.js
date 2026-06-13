@@ -72,4 +72,87 @@ describe('Express REST API Endpoints', () => {
     expect(res.body.reply).toContain('crisis');
     expect(res.body.safety.safe).toBe(false);
   });
+
+  describe('Input Validation Failures (boundary/type checks)', () => {
+    test('POST /api/settings fails with 400 on empty or invalid key', async () => {
+      const res = await request(app).post('/api/settings').send({ key: '', value: {} });
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.error).toContain('key must be a non-empty string');
+    });
+
+    test('POST /api/settings fails with 400 on key exceeding 100 characters', async () => {
+      const longKey = 'a'.repeat(101);
+      const res = await request(app).post('/api/settings').send({ key: longKey, value: {} });
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.error).toContain('key cannot exceed 100 characters');
+    });
+
+    test('POST /api/settings fails with 400 on missing value', async () => {
+      const res = await request(app).post('/api/settings').send({ key: 'theme' });
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.error).toContain('value is required');
+    });
+
+    test('POST /api/moods fails with 400 on invalid or out-of-range energy/stress', async () => {
+      let res = await request(app).post('/api/moods').send({ mood: 'Stressed', energy: 11, stress: 5 });
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.error).toContain('energy must be an integer');
+
+      res = await request(app).post('/api/moods').send({ mood: 'Stressed', energy: 5, stress: 0 });
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.error).toContain('stress must be an integer');
+
+      res = await request(app).post('/api/moods').send({ mood: 'Stressed', energy: 'high', stress: 5 });
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.error).toContain('energy must be an integer');
+    });
+
+    test('POST /api/moods fails with 400 on invalid tags type', async () => {
+      const res = await request(app).post('/api/moods').send({ mood: 'Stressed', energy: 5, stress: 5, tags: 'not-an-array' });
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.error).toContain('tags must be an array');
+    });
+
+    test('POST /api/journals fails with 400 on empty content', async () => {
+      const res = await request(app).post('/api/journals').send({ title: 'JEE stress', content: ' ' });
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.error).toContain('content must be a non-empty string');
+    });
+
+    test('DELETE /api/journals/:id fails with 400 on non-integer id', async () => {
+      const res = await request(app).delete('/api/journals/abc');
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.error).toContain('id must be a valid positive integer');
+    });
+  });
+
+  describe('Database query 500 Error Paths', () => {
+    test('GET /api/settings returns 500 on db query failure', async () => {
+      mockQuery.mockRejectedValue(new Error('DB Query Timeout'));
+      const res = await request(app).get('/api/settings');
+      expect(res.statusCode).toEqual(500);
+      expect(res.body.error).toContain('Failed to retrieve settings');
+    });
+
+    test('GET /api/moods returns 500 on db query failure', async () => {
+      mockQuery.mockRejectedValue(new Error('Connection lost'));
+      const res = await request(app).get('/api/moods');
+      expect(res.statusCode).toEqual(500);
+      expect(res.body.error).toContain('Failed to fetch mood logs');
+    });
+
+    test('GET /api/journals returns 500 on db query failure', async () => {
+      mockQuery.mockRejectedValue(new Error('Connection lost'));
+      const res = await request(app).get('/api/journals');
+      expect(res.statusCode).toEqual(500);
+      expect(res.body.error).toContain('Failed to fetch journals');
+    });
+
+    test('POST /api/moods returns 500 on db insert failure', async () => {
+      mockQuery.mockRejectedValue(new Error('Insert lock conflict'));
+      const res = await request(app).post('/api/moods').send({ mood: 'Calm', energy: 8, stress: 2 });
+      expect(res.statusCode).toEqual(500);
+      expect(res.body.error).toContain('Failed to log mood');
+    });
+  });
 });

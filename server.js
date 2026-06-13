@@ -41,8 +41,14 @@ app.get('/api/settings', async (req, res) => {
 
 app.post('/api/settings', async (req, res) => {
   const { key, value } = req.body;
-  if (!key || value === undefined) {
-    return res.status(400).json({ error: "key and value are required" });
+  if (!key || typeof key !== 'string' || key.trim() === '') {
+    return res.status(400).json({ error: "key must be a non-empty string" });
+  }
+  if (key.length > 100) {
+    return res.status(400).json({ error: "key cannot exceed 100 characters" });
+  }
+  if (value === undefined || value === null) {
+    return res.status(400).json({ error: "value is required" });
   }
   try {
     const db = getPool();
@@ -71,14 +77,32 @@ app.get('/api/moods', async (req, res) => {
 
 app.post('/api/moods', async (req, res) => {
   const { mood, energy, stress, tags } = req.body;
-  if (!mood || energy === undefined || stress === undefined) {
-    return res.status(400).json({ error: "mood, energy, and stress are required" });
+  if (!mood || typeof mood !== 'string' || mood.trim() === '') {
+    return res.status(400).json({ error: "mood must be a non-empty string" });
   }
+  
+  const parsedEnergy = Number(energy);
+  const parsedStress = Number(stress);
+
+  if (isNaN(parsedEnergy) || !Number.isInteger(parsedEnergy) || parsedEnergy < 1 || parsedEnergy > 10) {
+    return res.status(400).json({ error: "energy must be an integer between 1 and 10" });
+  }
+  if (isNaN(parsedStress) || !Number.isInteger(parsedStress) || parsedStress < 1 || parsedStress > 10) {
+    return res.status(400).json({ error: "stress must be an integer between 1 and 10" });
+  }
+
+  if (tags !== undefined && !Array.isArray(tags)) {
+    return res.status(400).json({ error: "tags must be an array of strings" });
+  }
+  if (Array.isArray(tags) && !tags.every(t => typeof t === 'string')) {
+    return res.status(400).json({ error: "all tags must be strings" });
+  }
+
   try {
     const db = getPool();
     const result = await db.query(
       'INSERT INTO mood_logs (mood, energy, stress, tags) VALUES ($1, $2, $3, $4) RETURNING *',
-      [mood, energy, stress, tags || []]
+      [mood, parsedEnergy, parsedStress, tags || []]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -101,8 +125,14 @@ app.get('/api/journals', async (req, res) => {
 
 app.post('/api/journals', async (req, res) => {
   const { title, content } = req.body;
-  if (!title || !content) {
-    return res.status(400).json({ error: "title and content are required" });
+  if (!title || typeof title !== 'string' || title.trim() === '') {
+    return res.status(400).json({ error: "title must be a non-empty string" });
+  }
+  if (title.length > 255) {
+    return res.status(400).json({ error: "title cannot exceed 255 characters" });
+  }
+  if (!content || typeof content !== 'string' || content.trim() === '') {
+    return res.status(400).json({ error: "content must be a non-empty string" });
   }
 
   // Safety Intercept Check
@@ -138,9 +168,13 @@ app.post('/api/journals', async (req, res) => {
 
 app.delete('/api/journals/:id', async (req, res) => {
   const { id } = req.params;
+  const parsedId = Number(id);
+  if (isNaN(parsedId) || !Number.isInteger(parsedId) || parsedId <= 0) {
+    return res.status(400).json({ error: "id must be a valid positive integer" });
+  }
   try {
     const db = getPool();
-    await db.query('DELETE FROM journals WHERE id = $1', [id]);
+    await db.query('DELETE FROM journals WHERE id = $1', [parsedId]);
     res.json({ success: true });
   } catch (err) {
     console.error("DELETE journal error:", err.message);
@@ -162,8 +196,8 @@ app.get('/api/chat', async (req, res) => {
 
 app.post('/api/chat', async (req, res) => {
   const { message } = req.body;
-  if (!message) {
-    return res.status(400).json({ error: "message is required" });
+  if (!message || typeof message !== 'string' || message.trim() === '') {
+    return res.status(400).json({ error: "message must be a non-empty string" });
   }
 
   const db = getPool();
