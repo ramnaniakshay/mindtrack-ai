@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aura - Student Mental Wellness & Exam Stress Tracker</title>
-  <meta name="description" content="An empathetic digital companion and wellness tracker for competitive exam students. Track mood, analyze daily journals, practice breathing, and chat with Aura.">
+  <title>FocusNest - Student Mental Wellness & Exam Stress Tracker</title>
+  <meta name="description" content="An empathetic digital companion and wellness tracker for competitive exam students. Track mood, analyze daily journals, practice breathing, and chat with FocusNest.">
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/focusnest-assets-492711/logo.png">
   
   <!-- Premium Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,10 +27,10 @@
     <aside class="sidebar" role="navigation" aria-label="Main Navigation">
       <div class="brand">
         <div class="brand-logo" aria-hidden="true">
-          <i data-lucide="sparkles"></i>
+          <img src="https://storage.googleapis.com/focusnest-assets-492711/logo.png" alt="FocusNest Logo" style="width: 24px; height: 24px; border-radius: 50%;">
         </div>
         <div class="brand-info">
-          <h1>Aura</h1>
+          <h1>FocusNest</h1>
           <span class="sub-brand">Student Wellness</span>
         </div>
         <button id="btn-theme-toggle" class="btn-theme-toggle" aria-label="Toggle theme mode" title="Toggle Light/Dark Mode">
@@ -48,7 +49,7 @@
         </button>
         <button id="nav-chat" class="nav-item" aria-controls="panel-chat" aria-selected="false" role="tab">
           <i data-lucide="message-circle-heart"></i>
-          <span>Aura Companion</span>
+          <span>FocusNest Companion</span>
         </button>
         <button id="nav-mindfulness" class="nav-item" aria-controls="panel-mindfulness" aria-selected="false" role="tab">
           <i data-lucide="wind"></i>
@@ -92,7 +93,7 @@
             <div class="card-hero-content">
               <i data-lucide="quote" class="quote-icon" aria-hidden="true"></i>
               <p class="affirmation-text" id="daily-affirmation">"Your capacity to learn and adapt is infinitely greater than any single exam mock score."</p>
-              <span class="affirmation-author">Aura Wellness Companion</span>
+              <span class="affirmation-author">FocusNest Wellness Companion</span>
             </div>
           </div>
           
@@ -175,12 +176,12 @@
         </div>
       </section>
 
-      <!-- Panel: Aura Chat -->
+      <!-- Panel: FocusNest Chat -->
       <section id="panel-chat" class="tab-panel" role="tabpanel" aria-labelledby="nav-chat">
         <header class="panel-header">
           <div>
             <span class="header-pre">Safe Space</span>
-            <h2 class="header-title">Chat with Aura</h2>
+            <h2 class="header-title">Chat with FocusNest</h2>
           </div>
         </header>
         
@@ -192,14 +193,14 @@
             <!-- Messages -->
             <div class="message system">
               <div class="message-content">
-                <p>Hello! I'm Aura, your empathetic wellness companion. How is your preparation going? Feel free to vent about mock tests, anxiety, sleep issues, or syllabus pressures. I'm here to support you.</p>
+                <p>Hello! I'm FocusNest, your empathetic wellness companion. How is your preparation going? Feel free to vent about mock tests, anxiety, sleep issues, or syllabus pressures. I'm here to support you.</p>
               </div>
             </div>
           </div>
           
           <div class="chat-input-area">
             <form id="form-chat" class="chat-form">
-              <input type="text" id="chat-input-field" placeholder="Type a message to Aura..." required aria-label="Chat Message Input">
+              <input type="text" id="chat-input-field" placeholder="Type a message to FocusNest..." required aria-label="Chat Message Input">
               <button type="submit" class="btn-send" id="btn-chat-send" aria-label="Send Message">
                 <i data-lucide="send"></i>
               </button>

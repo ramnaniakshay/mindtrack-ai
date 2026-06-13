@@ -44,7 +44,7 @@ describe('Gemini Wellness Companion & Analyzer Heuristics', () => {
 
     test('getGeminiChatResponse falls back to local simulation if no API key exists', async () => {
       const response = await getGeminiChatResponse([], "hello", "");
-      expect(response).toContain("Aura");
+      expect(response).toContain("FocusNest");
     });
 
     test('getGeminiChatResponse uses fetch and resolves AI reply if key is set', async () => {
@@ -55,14 +55,14 @@ describe('Gemini Wellness Companion & Analyzer Heuristics', () => {
         json: () => Promise.resolve({
           candidates: [{
             content: {
-              parts: [{ text: "Hello from mock AI Aura!" }]
+              parts: [{ text: "Hello from mock AI FocusNest!" }]
             }
           }]
         })
       });
 
       const response = await getGeminiChatResponse([], "hi", "JEE");
-      expect(response).toBe("Hello from mock AI Aura!");
+      expect(response).toBe("Hello from mock AI FocusNest!");
       expect(global.fetch).toHaveBeenCalled();
     });
 
@@ -74,7 +74,7 @@ describe('Gemini Wellness Companion & Analyzer Heuristics', () => {
         text: () => Promise.resolve("Rate limited")
       });
 
-      const response = await getGeminiChatResponse([], "Hi Aura, I feel tired", "NEET");
+      const response = await getGeminiChatResponse([], "Hi FocusNest, I feel tired", "NEET");
       expect(response).toContain("marathon"); // Mock NEET fallback
       expect(global.fetch).toHaveBeenCalled();
     });

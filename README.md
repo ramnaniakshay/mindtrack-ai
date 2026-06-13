@@ -1,6 +1,6 @@
-# MindTrack AI - Student Mental Wellness & Exam Stress Tracker
+# FocusNest - Student Mental Wellness & Exam Stress Tracker
 
-**MindTrack AI** is a comprehensive, full-stack, Generative AI-powered mental wellness companion designed for students preparing for high-stakes competitive exams (including JEE, NEET, UPSC, CAT, GATE, and Board Exams). 
+**FocusNest** is a comprehensive, full-stack, Generative AI-powered mental wellness companion designed for students preparing for high-stakes competitive exams (including JEE, NEET, UPSC, CAT, GATE, and Board Exams). 
 
 The app features dynamic countdowns, visual HSL SVG analytics, journal cognitive analysis, an empathetic chatbot, client-side synthesized soundscapes, and mindfulness tools to break panic spirals.
 
@@ -31,6 +31,12 @@ The app features dynamic countdowns, visual HSL SVG analytics, journal cognitive
 5. **Aesthetics & Accessibility**
    * Complete support for Light & Dark modes.
    * ARIA-compliant semantics, keyboard navigation support, and fully responsive CSS grid layout.
+
+6. **Enterprise-Grade Security**
+   * **Frictionless Authorization**: Uses Anonymous UUID Device Sessions to safely segment journal and chat data without forced logins.
+   * **Prompt Hardening & Escaping**: Defensively sanitizes JSON AI outputs and patches stored XSS with client-side HTML escaping.
+   * **Rate Limiting**: Protects Gemini AI endpoints from cost-amplification via IP throttling.
+   * **Encrypted Secrets**: Dynamically fetches DB credentials and API keys via Google Cloud Secret Manager (non-blocking).
 
 ---
 

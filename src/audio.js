@@ -75,7 +75,9 @@ function stopOceanWaves() {
     try {
       waveNode.noiseSource.stop();
       waveNode.lfo.stop();
-    } catch(e){}
+    } catch(e){
+      console.warn("Audio stop error:", e);
+    }
     waveNode = null;
   }
 }
@@ -114,7 +116,9 @@ function stopBinauralBeats() {
     try {
       binauralNode.oscLeft.stop();
       binauralNode.oscRight.stop();
-    } catch(e){}
+    } catch(e){
+      console.warn("Audio stop error:", e);
+    }
     binauralNode = null;
   }
 }
@@ -155,7 +159,9 @@ function stopFocusNoise() {
   if (noiseNode) {
     try {
       noiseNode.source.stop();
-    } catch(e){}
+    } catch(e){
+      console.warn("Audio stop error:", e);
+    }
     noiseNode = null;
   }
 }

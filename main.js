@@ -3,6 +3,25 @@ import { GroundingExercise } from './src/grounding.js';
 import { AudioEngine } from './src/audio.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Get or create anonymous Device ID for session segmentation
+  let deviceId = localStorage.getItem('focusnest_device_id');
+  if (!deviceId) {
+    deviceId = crypto.randomUUID();
+    localStorage.setItem('focusnest_device_id', deviceId);
+  }
+
+  // Wrapper for all fetch calls to automatically attach the auth header
+  const apiFetch = async (url, options = {}) => {
+    const headers = options.headers || {};
+    return fetch(url, {
+      ...options,
+      headers: {
+        ...headers,
+        'Authorization': `Bearer ${deviceId}`
+      }
+    });
+  };
+
   // Initialize Lucide Icons
   lucide.createIcons();
 
@@ -85,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Database helper methods
   async function loadSettings() {
     try {
-      const res = await fetch('/api/settings');
+      const res = await apiFetch('/api/settings');
       if (res.ok) {
         const data = await res.json();
         if (data.exam_goal) {
@@ -112,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function saveSetting(key, value) {
     try {
-      await fetch('/api/settings', {
+      await apiFetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key, value })
@@ -173,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (mood === 'Exhausted') { energy = 1; stress = 7; tags.push('burnout'); }
 
       try {
-        const res = await fetch('/api/moods', {
+        const res = await apiFetch('/api/moods', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ mood, energy, stress, tags })
@@ -322,7 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function refreshMoodsData() {
     try {
-      const res = await fetch('/api/moods');
+      const res = await apiFetch('/api/moods');
       if (res.ok) {
         const moods = await res.json();
         renderMoodChart(moods);
@@ -350,7 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
     lucide.createIcons();
 
     try {
-      const res = await fetch('/api/journals', {
+      const res = await apiFetch('/api/journals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, content })
@@ -412,7 +431,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       card.querySelector('.btn-delete').addEventListener('click', async () => {
         if (confirm("Delete this journal entry permanently?")) {
-          await fetch(`/api/journals/${entry.id}`, { method: 'DELETE' });
+          await apiFetch(`/api/journals/${entry.id}`, { method: 'DELETE' });
           refreshJournals();
         }
       });
@@ -506,7 +525,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function refreshJournals() {
     try {
-      const res = await fetch('/api/journals');
+      const res = await apiFetch('/api/journals');
       if (res.ok) {
         const data = await res.json();
         renderJournalsList(data);
@@ -517,7 +536,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // 3. Aura Empathetic Conversational Companion
+  // 3. FocusNest Empathetic Conversational Companion
   const chatForm = document.getElementById('form-chat');
   const chatInputField = document.getElementById('chat-input-field');
   const chatMessagesBox = document.getElementById('chat-messages-box');
@@ -537,7 +556,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const typingBubble = appendTypingIndicator();
 
     try {
-      const res = await fetch('/api/chat', {
+      const res = await apiFetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message })
@@ -557,6 +576,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch(err) {
       typingBubble.remove();
+      console.warn("Connection error:", err.message);
       appendMessageBubble('model', "Connection is currently down. Please practice Guided Breathing while we reconnect.");
     }
   });
@@ -565,8 +585,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const bubble = document.createElement("div");
     bubble.className = `message ${role}`;
     
-    // Parse simple markdown-like double stars for bolding in model replies
-    const formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    // Escape HTML first to prevent stored XSS, then parse simple markdown-like double stars
+    const escapedText = escapeHtml(text);
+    const formattedText = escapedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
     bubble.innerHTML = `
       <div class="message-content">
@@ -582,7 +603,7 @@ document.addEventListener('DOMContentLoaded', () => {
     bubble.className = "message model typing";
     bubble.innerHTML = `
       <div class="message-content" style="padding:10px 16px;">
-        <p style="opacity:0.6;">Aura is typing...</p>
+        <p style="opacity:0.6;">FocusNest is typing...</p>
       </div>
     `;
     chatMessagesBox.appendChild(bubble);
@@ -592,7 +613,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function loadChatHistory() {
     try {
-      const res = await fetch('/api/chat');
+      const res = await apiFetch('/api/chat');
       if (res.ok) {
         const messages = await res.json();
         if (messages.length > 0) {
@@ -792,7 +813,7 @@ document.addEventListener('DOMContentLoaded', () => {
       osc.start();
       osc.stop(audioCtx.currentTime + 0.4);
     } catch(e) {
-      console.warn("Browser AudioContext not initialized yet for notification.");
+      console.warn("Browser AudioContext not initialized yet for notification.", e.message);
     }
   }
 

@@ -5,6 +5,14 @@ import { fileURLToPath } from 'url';
 import { runMigrations, getPool } from './db.js';
 import { checkSafety } from './safety.js';
 import { getGeminiChatResponse, getGeminiJournalAnalysis } from './gemini.js';
+import compression from 'compression';
+import rateLimit from 'express-rate-limit';
+
+const geminiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // limit each IP to 20 requests per windowMs for expensive API calls
+  message: { error: "Too many AI requests from this IP, please try again after 15 minutes" }
+});
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -12,11 +20,30 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+// Auth Middleware
+const requireAuth = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: "Unauthorized: Missing or invalid token" });
+  }
+  const token = authHeader.split(' ')[1];
+  if (!token || token.trim() === '') {
+    return res.status(401).json({ error: "Unauthorized: Invalid token" });
+  }
+  req.userId = token;
+  next();
+};
+
+app.use(compression());
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' ? process.env.FRONTEND_URL : 'http://localhost:3000',
+  methods: ['GET', 'POST', 'DELETE', 'PUT'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
-// Serving built frontend bundle in production
-app.use(express.static(path.join(__dirname, 'dist')));
+// Serving built frontend bundle in production with Cache-Control headers
+app.use(express.static(path.join(__dirname, 'dist'), { maxAge: '1d' }));
 
 // Health Check
 app.get('/health', (req, res) => {
@@ -24,10 +51,10 @@ app.get('/health', (req, res) => {
 });
 
 // Settings API
-app.get('/api/settings', async (req, res) => {
+app.get('/api/settings', requireAuth, async (req, res) => {
   try {
-    const db = getPool();
-    const result = await db.query('SELECT * FROM settings');
+    const db = await getPool();
+    const result = await db.query('SELECT * FROM settings WHERE user_id = $1', [req.userId]);
     const settingsMap = {};
     result.rows.forEach(row => {
       settingsMap[row.key] = row.value;
@@ -39,7 +66,7 @@ app.get('/api/settings', async (req, res) => {
   }
 });
 
-app.post('/api/settings', async (req, res) => {
+app.post('/api/settings', requireAuth, async (req, res) => {
   const { key, value } = req.body;
   if (!key || typeof key !== 'string' || key.trim() === '') {
     return res.status(400).json({ error: "key must be a non-empty string" });
@@ -51,10 +78,10 @@ app.post('/api/settings', async (req, res) => {
     return res.status(400).json({ error: "value is required" });
   }
   try {
-    const db = getPool();
+    const db = await getPool();
     await db.query(
-      'INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value',
-      [key, JSON.stringify(value)]
+      'INSERT INTO settings (user_id, key, value) VALUES ($1, $2, $3) ON CONFLICT (user_id, key) DO UPDATE SET value = EXCLUDED.value',
+      [req.userId, key, JSON.stringify(value)]
     );
     res.json({ success: true });
   } catch (err) {
@@ -64,10 +91,10 @@ app.post('/api/settings', async (req, res) => {
 });
 
 // Mood Logs API
-app.get('/api/moods', async (req, res) => {
+app.get('/api/moods', requireAuth, async (req, res) => {
   try {
-    const db = getPool();
-    const result = await db.query('SELECT * FROM mood_logs ORDER BY logged_at DESC LIMIT 30');
+    const db = await getPool();
+    const result = await db.query('SELECT * FROM mood_logs WHERE user_id = $1 ORDER BY logged_at DESC LIMIT 30', [req.userId]);
     res.json(result.rows);
   } catch (err) {
     console.error("GET moods error:", err.message);
@@ -75,7 +102,7 @@ app.get('/api/moods', async (req, res) => {
   }
 });
 
-app.post('/api/moods', async (req, res) => {
+app.post('/api/moods', requireAuth, async (req, res) => {
   const { mood, energy, stress, tags } = req.body;
   if (!mood || typeof mood !== 'string' || mood.trim() === '') {
     return res.status(400).json({ error: "mood must be a non-empty string" });
@@ -99,10 +126,10 @@ app.post('/api/moods', async (req, res) => {
   }
 
   try {
-    const db = getPool();
+    const db = await getPool();
     const result = await db.query(
-      'INSERT INTO mood_logs (mood, energy, stress, tags) VALUES ($1, $2, $3, $4) RETURNING *',
-      [mood, parsedEnergy, parsedStress, tags || []]
+      'INSERT INTO mood_logs (user_id, mood, energy, stress, tags) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [req.userId, mood, parsedEnergy, parsedStress, tags || []]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -112,10 +139,10 @@ app.post('/api/moods', async (req, res) => {
 });
 
 // Journals API
-app.get('/api/journals', async (req, res) => {
+app.get('/api/journals', requireAuth, async (req, res) => {
   try {
-    const db = getPool();
-    const result = await db.query('SELECT * FROM journals ORDER BY logged_at DESC');
+    const db = await getPool();
+    const result = await db.query('SELECT * FROM journals WHERE user_id = $1 ORDER BY logged_at DESC', [req.userId]);
     res.json(result.rows);
   } catch (err) {
     console.error("GET journals error:", err.message);
@@ -123,7 +150,7 @@ app.get('/api/journals', async (req, res) => {
   }
 });
 
-app.post('/api/journals', async (req, res) => {
+app.post('/api/journals', requireAuth, geminiLimiter, async (req, res) => {
   const { title, content } = req.body;
   if (!title || typeof title !== 'string' || title.trim() === '') {
     return res.status(400).json({ error: "title must be a non-empty string" });
@@ -147,17 +174,10 @@ app.post('/api/journals', async (req, res) => {
   try {
     // Run GenAI / Local Heuristics analysis
     const analysis = await getGeminiJournalAnalysis(content);
-    const db = getPool();
+    const db = await getPool();
     const result = await db.query(
-      'INSERT INTO journals (title, content, sentiment, stress_score, triggers, cognitive_distortions) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [
-        title,
-        content,
-        analysis.sentiment,
-        analysis.stressScore,
-        analysis.triggers,
-        analysis.cognitiveDistortions
-      ]
+      'INSERT INTO journals (user_id, title, content, sentiment, stress_score, triggers, cognitive_distortions) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [req.userId, title, content, analysis.sentiment, analysis.stressScore, analysis.triggers, analysis.cognitiveDistortions]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -166,15 +186,15 @@ app.post('/api/journals', async (req, res) => {
   }
 });
 
-app.delete('/api/journals/:id', async (req, res) => {
+app.delete('/api/journals/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
   const parsedId = Number(id);
   if (isNaN(parsedId) || !Number.isInteger(parsedId) || parsedId <= 0) {
     return res.status(400).json({ error: "id must be a valid positive integer" });
   }
   try {
-    const db = getPool();
-    await db.query('DELETE FROM journals WHERE id = $1', [parsedId]);
+    const db = await getPool();
+    const result = await db.query('DELETE FROM journals WHERE id = $1 AND user_id = $2 RETURNING *', [parsedId, req.userId]);
     res.json({ success: true });
   } catch (err) {
     console.error("DELETE journal error:", err.message);
@@ -183,10 +203,10 @@ app.delete('/api/journals/:id', async (req, res) => {
 });
 
 // Chat Companion API
-app.get('/api/chat', async (req, res) => {
+app.get('/api/chat', requireAuth, async (req, res) => {
   try {
-    const db = getPool();
-    const result = await db.query('SELECT * FROM chats ORDER BY logged_at ASC LIMIT 50');
+    const db = await getPool();
+    const result = await db.query('SELECT * FROM chats WHERE user_id = $1 ORDER BY logged_at ASC LIMIT 50', [req.userId]);
     res.json(result.rows);
   } catch (err) {
     console.error("GET chat error:", err.message);
@@ -194,24 +214,23 @@ app.get('/api/chat', async (req, res) => {
   }
 });
 
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', requireAuth, geminiLimiter, async (req, res) => {
   const { message } = req.body;
   if (!message || typeof message !== 'string' || message.trim() === '') {
     return res.status(400).json({ error: "message must be a non-empty string" });
   }
 
-  const db = getPool();
-
   // 1. Safety check
   const safety = checkSafety(message);
   if (!safety.safe) {
     try {
+      const db = await getPool();
       // Save user message
-      await db.query('INSERT INTO chats (role, message) VALUES ($1, $2)', ['user', message]);
+      await db.query('INSERT INTO chats (user_id, role, message) VALUES ($1, $2, $3)', [req.userId, 'user', message]);
       // Save security intercept message
       const systemMsg = `${safety.message}\n\n**Emergency Support Contacts:**\n` +
         safety.helplines.map(h => `- **${h.name}**: ${h.number}`).join('\n');
-      const responseResult = await db.query('INSERT INTO chats (role, message) VALUES ($1, $2) RETURNING *', ['model', systemMsg]);
+      await db.query('INSERT INTO chats (user_id, role, message) VALUES ($1, $2, $3)', [req.userId, 'model', systemMsg]);
       return res.status(200).json({
         reply: systemMsg,
         safety
@@ -223,14 +242,18 @@ app.post('/api/chat', async (req, res) => {
   }
 
   try {
-    // Fetch last 10 chat messages to maintain context
-    const contextResult = await db.query('SELECT role, message FROM chats ORDER BY logged_at DESC LIMIT 10');
+      const db = await getPool();
+    // 2. Insert user message
+    await db.query('INSERT INTO chats (user_id, role, message) VALUES ($1, $2, $3)', [req.userId, 'user', message]);
+
+    // 3. Get recent context
+    const contextResult = await db.query('SELECT role, message FROM chats WHERE user_id = $1 ORDER BY logged_at DESC LIMIT 10', [req.userId]);
     const history = contextResult.rows.reverse();
 
-    // Query target exam setting for personalization context
+    // 4. Query target exam setting for personalization context
     let examContext = "Exams";
     try {
-      const settingsResult = await db.query("SELECT value FROM settings WHERE key = 'exam_goal'");
+      const settingsResult = await db.query("SELECT value FROM settings WHERE key = 'exam_goal' AND user_id = $1", [req.userId]);
       if (settingsResult.rows.length > 0) {
         examContext = settingsResult.rows[0].value.exam || "Exams";
       }
@@ -242,14 +265,20 @@ app.post('/api/chat', async (req, res) => {
     const reply = await getGeminiChatResponse(history, message, examContext);
 
     // Write user message & companion message to DB
-    await db.query('INSERT INTO chats (role, message) VALUES ($1, $2)', ['user', message]);
-    const responseResult = await db.query('INSERT INTO chats (role, message) VALUES ($1, $2) RETURNING *', ['model', reply]);
+    await db.query('INSERT INTO chats (user_id, role, message) VALUES ($1, $2, $3)', [req.userId, 'user', message]);
+    await db.query('INSERT INTO chats (user_id, role, message) VALUES ($1, $2, $3)', [req.userId, 'model', reply]);
 
     res.json({ reply });
   } catch (err) {
     console.error("POST chat error:", err.message);
     res.status(500).json({ error: "Failed to process chat companion response" });
   }
+});
+
+// Global Express Error Handler
+app.use((err, req, res, next) => {
+  console.error("Unhandled Error:", err.message);
+  res.status(500).json({ error: "Internal Server Error" });
 });
 
 // Fallback path to index.html for Vite client routing
